@@ -41,6 +41,7 @@ object Postgres {
   }
 
   def createTables(): Unit = {
+    ctx.execute("CREATE SCHEMA musicbrainz")
     ctx.execute("SET search_path TO musicbrainz, metadata, public")
     runSqlFromFile(Settings.tableUrl.name)
   }
