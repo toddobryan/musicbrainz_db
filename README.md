@@ -12,7 +12,7 @@ https://github.com/elliotchance/mbzdb
 Before you can run it, do the following.
 
 1. Install PostgreSQL 10. (For Ubuntu 18.04,  
-  `sudo apt-get install postgresql-server-dev`)
+  `sudo apt-get install postgresql-server-dev-10`)
 1. Install the following Postgres extensions (On Mac,  
   see:[installing extensions][1] or on Ubuntu  
   `sudo apt-get install postgresql-contrib`
