@@ -34,7 +34,7 @@ Before you can run it, do the following.
     ```
     `\q` will exit `psql`.
 1. Run the `InstallDb.scala` file. Assuming you've installed [SBT][3],  
-  from the terminal, `sbt run musicbrainzdb.InstallDb`
+  from the terminal, `sbt "run musicbrainzdb.InstallDb"`
 
 [1]: http://www.reades.com/2015/12/11/installing-postgresql-extensions-on-mac-os-x/
 [2]: https://github.com/metabrainz/postgresql-musicbrainz-collate/blob/master/README.musicbrainz_collate.md

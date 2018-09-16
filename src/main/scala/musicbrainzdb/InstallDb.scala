@@ -14,6 +14,8 @@ object InstallDb extends App {
   Downloader.downloadSqlFiles()
   println("Downloading database dumps...")
   Downloader.downloadDumps()
+  println("Dropping old schema...")
+  Postgres.dropSchema()
   println("Creating tables...")
   Postgres.createTables()
   println("Loading tables...")

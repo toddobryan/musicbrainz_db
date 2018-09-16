@@ -6,8 +6,7 @@ import java.sql.DriverManager
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
-import org.jooq.impl.DSL._
-import org.jooq.impl.{DSL, SQLDataType}
+import org.jooq.impl.DSL
 import org.jooq.{DSLContext, SQLDialect}
 import org.postgresql.copy.CopyManager
 import org.postgresql.core.BaseConnection
@@ -22,27 +21,13 @@ object Postgres {
 
   implicit lazy val ctx: DSLContext = DSL.using(conn, SQLDialect.POSTGRES_9_5)
 
-  def tableExists(tableName: String): Boolean = {
-    ctx.select(count())
-        .from("information_schema.tables")
-        .where(s"table_name = ${inline(tableName)}")
-        .fetchOne(0, classOf[Int]) == 1
-  }
-
-  def createExtraTables(): Unit = {
-    val tableName = "key_value_table"
-    if (!tableExists(tableName)) {
-      ctx.createTable(tableName)
-          .column("name", SQLDataType.VARCHAR.length(255))
-          .column("value", SQLDataType.CLOB)
-          .constraints(constraint("PK_NAME").primaryKey("name"))
-          .execute();
-    }
+  def dropSchema(): Unit = {
+    ctx.execute("DROP SCHEMA IF EXISTS musicbrainz CASCADE")
   }
 
   def createTables(): Unit = {
     ctx.execute("CREATE SCHEMA musicbrainz")
-    ctx.execute("SET search_path TO musicbrainz, metadata, public")
+    ctx.execute("SET search_path TO musicbrainz, public")
     runSqlFromFile(Settings.tableUrl.name)
   }
 
