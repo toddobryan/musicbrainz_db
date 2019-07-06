@@ -14,9 +14,11 @@ class RemoteFile(
 
   def get(urlBase: String): String = {
     val src = Source.fromURL(new URL(s"$urlBase/$name")).mkString
-    if (Base64.encodeBase64String(DigestUtils.md5(src)) != hash) {
+    val newHash = Base64.encodeBase64String(DigestUtils.md5(src))
+    if (newHash != hash) {
       throw new RuntimeException(
-        s"File $name has changed. Check differences to make sure process still works.")
+        s"File $name has changed (new hash = $newHash). " +
+            "Check differences to make sure process still works.")
     }
     transformers.toList.foldLeft(src)((newSrc, transformer) => transformer(newSrc))
   }

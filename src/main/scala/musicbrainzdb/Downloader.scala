@@ -14,11 +14,11 @@ import scala.io.Source
 object Downloader {
   val Md5Sums = "MD5SUMS"
   val Sha256Sums = "SHA256SUMS"
-  val MainDump = "mbdump.tar.bz2"
   val RemoteDumpDir = "mbdump"
 
   lazy val latest: String = {
     val ftp: FTPClient = newFtpClient()
+    ftp.enterLocalPassiveMode()
     ftp.changeWorkingDirectory("/pub/musicbrainz/data/fullexport/")
     val baos = new ByteArrayOutputStream()
     ftp.retrieveFile("LATEST", baos)
@@ -28,13 +28,14 @@ object Downloader {
   }
 
   def downloadSqlFiles(): Unit = {
-    Settings.remoteSqlFiles.foreach(downloadSqlFile(_))
+    MusicbrainzSettings.remoteSqlFiles.foreach(downloadSqlFile(MusicbrainzSettings, _))
+    CoverArtArchiveSettings.remoteSqlFiles.foreach(downloadSqlFile(CoverArtArchiveSettings, _))
   }
 
-  def downloadSqlFile(file: RemoteFile): Unit = {
-    val localPath: Path = Paths.get(Settings.sqlLocation, file.name)
+  def downloadSqlFile(settings: Settings, file: RemoteFile): Unit = {
+    val localPath: Path = Paths.get(settings.sqlLocation, file.name)
     Files.deleteIfExists(localPath)
-    val dataFromRemote: String = file.get(Settings.remoteBaseUrl)
+    val dataFromRemote: String = file.get(settings.remoteBaseUrl)
     Files.write(localPath, dataFromRemote.getBytes(StandardCharsets.UTF_8),
       StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)
   }
@@ -42,7 +43,7 @@ object Downloader {
   def getHash(name: String): String = {
     Base64.encodeBase64String(
       DigestUtils.md5(
-        Source.fromURL(new URL(s"${Settings.remoteBaseUrl}/$name")).mkString))
+        Source.fromURL(new URL(s"${MusicbrainzSettings.remoteBaseUrl}/$name")).mkString))
   }
 
   def newFtpClient(): FTPClient = {
@@ -57,29 +58,32 @@ object Downloader {
     ftp
   }
 
-  def downloadDumps(): Unit = {
+  def downloadDumps(settings: Settings): Unit = {
     println(s"The latest mbdump is $latest")
-    val dumpPath = Paths.get(Settings.dbDumpLocal, latest)
+    val dumpPath = Paths.get(MusicbrainzSettings.dbDumpDir, latest)
     if (!Files.exists(dumpPath)) {
       Files.createDirectory(dumpPath)
     }
     val ftp: FTPClient = newFtpClient()
+    ftp.enterLocalPassiveMode()
     ftp.changeWorkingDirectory(s"/pub/musicbrainz/data/fullexport/$latest/")
     retrieveIntoDumps(ftp, Md5Sums)
     retrieveIntoDumps(ftp, Sha256Sums)
-    if (isUpToDate(MainDump)) {
-      println(s"${MainDump} file is already up to date.")
-    } else {
-      retrieveIntoDumps(ftp, MainDump)
-      println("Checking download for accuracy...")
-      if (!isUpToDate(MainDump)) {
-        throw new RuntimeException("Download didn't check out.")
+    settings.dumpNames.foreach { dump =>
+      if (isUpToDate(dump)) {
+        println(s"${dump} file is already up to date.")
+      } else {
+        retrieveIntoDumps(ftp, dump)
+        println("Checking download for accuracy...")
+        if (!isUpToDate(dump)) {
+          throw new RuntimeException("Download didn't check out.")
+        }
       }
     }
   }
 
   def retrieveIntoDumps(ftp: FTPClient, filename: String): Unit = {
-    val file = Paths.get(Settings.dbDumpLocal, latest, filename)
+    val file = Paths.get(MusicbrainzSettings.dbDumpDir, latest, filename)
     ftp.enterLocalPassiveMode()
     ftp.setFileType(FTP.BINARY_FILE_TYPE)
     val in = new BufferedInputStream(ftp.retrieveFileStream(filename))
@@ -108,7 +112,7 @@ object Downloader {
   }
 
   def dumpDir(): String = {
-    s"${Settings.dbDumpLocal}/$latest"
+    s"${MusicbrainzSettings.dbDumpDir}/$latest"
   }
 
   def dumpFile(filename: String): String = {

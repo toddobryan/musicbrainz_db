@@ -21,52 +21,54 @@ object Postgres {
 
   implicit lazy val ctx: DSLContext = DSL.using(conn, SQLDialect.POSTGRES_9_5)
 
-  def dropSchema(): Unit = {
-    ctx.execute("DROP SCHEMA IF EXISTS musicbrainz CASCADE")
+  def dropSchema(settings: Settings): Unit = {
+    ctx.execute(s"DROP SCHEMA IF EXISTS ${settings.dbSchema} CASCADE")
   }
 
-  def createTables(): Unit = {
-    ctx.execute("CREATE SCHEMA musicbrainz")
-    ctx.execute("SET search_path TO musicbrainz, public")
-    runSqlFromFile(Settings.tableUrl.name)
+  def createTables(settings: Settings): Unit = {
+    ctx.execute(s"CREATE SCHEMA ${settings.dbSchema}")
+    ctx.execute(s"SET search_path TO ${settings.dbSchema}, public")
+    runSqlFromFile(settings, settings.tableUrl.name)
   }
 
-  def loadTablesFromDump(): Unit = {
-    val in = new BZip2CompressorInputStream(
-      new BufferedInputStream(
-        Files.newInputStream(
-          Paths.get(Settings.dbDumpLocal, Downloader.latest, Downloader.MainDump))))
-    val archive = new TarArchiveInputStream(in)
-    var currentEntry = archive.getNextTarEntry
-    while (currentEntry != null) {
-      if (currentEntry.getName.startsWith(s"${Downloader.RemoteDumpDir}/")) {
-        val name = currentEntry.getName.substring(s"${Downloader.RemoteDumpDir}/".length)
-        println(s"Inserting into $name...")
-        Postgres.copyDataIn(name, archive)
-      } else {
-        println(s"Skipping ${currentEntry.getName}.")
+  def loadTablesFromDump(settings: Settings): Unit = {
+    settings.dumpNames.foreach { dumpName =>
+      val in = new BZip2CompressorInputStream(
+        new BufferedInputStream(
+          Files.newInputStream(
+            Paths.get(settings.dbDumpDir, Downloader.latest, dumpName))))
+      val archive = new TarArchiveInputStream(in)
+      var currentEntry = archive.getNextTarEntry
+      while (currentEntry != null) {
+        if (currentEntry.getName.startsWith(s"${Downloader.RemoteDumpDir}/")) {
+          val name = currentEntry.getName.substring(s"${Downloader.RemoteDumpDir}/".length)
+          println(s"Inserting into $name...")
+          Postgres.copyDataIn(name, archive)
+        } else {
+          println(s"Skipping ${currentEntry.getName}.")
+        }
+        currentEntry = archive.getNextTarEntry
       }
-      currentEntry = archive.getNextTarEntry
+      println("Done.")
+      archive.close()
     }
-    println("Done.")
-    archive.close()
   }
 
-  def updateIndexes(): Unit = {
+  def updateIndexes(settings: Settings): Unit = {
     println("  Updating functions...")
-    runSqlFromFile(Settings.funcUrl.name)
+    runSqlFromFile(settings, settings.funcUrl.name)
     println("  Updating indexes...")
-    runSqlFromFile(Settings.indexUrl.name)
+    runSqlFromFile(settings, settings.indexUrl.name)
     println("  Updating primary keys...")
-    runSqlFromFile(Settings.pkUrl.name)
+    runSqlFromFile(settings, settings.pkUrl.name)
   }
 
-  def updateForeignKey(): Unit = {
-    runSqlFromFile(Settings.fkUrl.name)
+  def updateForeignKey(settings: Settings): Unit = {
+    runSqlFromFile(settings, settings.fkUrl.name)
   }
 
-  def runSqlFromFile(filename: String): Unit = {
-    val sql = Source.fromFile(s"${Settings.sqlLocation}/$filename").mkString
+  def runSqlFromFile(settings: Settings, filename: String): Unit = {
+    val sql = Source.fromFile(s"${settings.sqlLocation}/$filename").mkString
     ctx.execute(sql)
   }
 
