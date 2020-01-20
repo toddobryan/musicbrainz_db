@@ -19,7 +19,7 @@ object Postgres {
     "jdbc:postgresql://localhost/musicbrainz_db", "musicbrainz", "musicbrainz").
       asInstanceOf[BaseConnection]
 
-  implicit lazy val ctx: DSLContext = DSL.using(conn, SQLDialect.POSTGRES_9_5)
+  implicit lazy val ctx: DSLContext = DSL.using(conn, SQLDialect.POSTGRES)
 
   def dropSchema(settings: Settings): Unit = {
     ctx.execute(s"DROP SCHEMA IF EXISTS ${settings.dbSchema} CASCADE")
