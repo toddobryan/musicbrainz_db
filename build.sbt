@@ -1,3 +1,4 @@
+import java.io.PrintWriter
 import java.nio.file.Files
 
 val commonsCompressVersion = "1.19"
@@ -54,11 +55,24 @@ cronFolder := {
   folder
 }
 
+val bashFileContents =
+  """#!/bin/bash
+    |cd /home/toddobryan/musicbrainz-update
+    |java -jar InstallDb.jar
+    |""".stripMargin
+
 writeToCronFolder := {
   assembly.value
-  val resources = cronFolder.value / "resources"
+  val folder = cronFolder.value
+  val resources = folder / "resources"
   if (!resources.exists()) {
     Files.createSymbolicLink(resources.asPath, (baseDirectory.value / "resources").asPath)
   }
-  Files.copy((baseDirectory.value / "target" / "scala-2.13" / jar).asPath, ((cronFolder.value / jar)).asPath)
+  Files.copy((baseDirectory.value / "target" / "scala-2.13" / jar).asPath, ((folder / jar)).asPath)
+  val bashFile = folder / "musicbrainz_update.sh"
+  new PrintWriter(bashFile.getAbsolutePath) {
+    write(bashFileContents)
+    close()
+  }
+  bashFile.setExecutable(true)
 }
