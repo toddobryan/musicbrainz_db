@@ -24,13 +24,12 @@ Before you can run it, do the following.
 1. Set everything up in Postgres:
     ```
     $ sudo -u postgres psql
-    > CREATE DATABASE musicbrainz_db;
+    > CREATE DATABASE musicbrainz;
     > CREATE USER musicbrainz WITH PASSWORD 'musicbrainz';
-    > GRANT ALL ON DATABASE musicbrainz_db TO musicbrainz;
-    > \c musicbrainz_db;
+    > GRANT ALL ON DATABASE musicbrainz TO musicbrainz;
+    > \c musicbrainz;
     > CREATE EXTENSION cube;
     > CREATE EXTENSION earthdistance;
-    > CREATE EXTENSION musicbrainz_collate;
     ```
     `\q` will exit `psql`.
 1. Run the `InstallDb.scala` file. Assuming you've installed [SBT][3],  

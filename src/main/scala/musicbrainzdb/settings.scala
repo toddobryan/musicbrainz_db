@@ -7,6 +7,10 @@ trait Settings {
   val dumpNames: List[String]
   val dbDumpDir: String = "resources/db_dumps"
 
+  val searchConfigUrl: Option[RemoteFile] = None
+  val extensionsUrl: Option[RemoteFile] = None
+  val collationsUrl: Option[RemoteFile] = None
+  val typesUrl: Option[RemoteFile]
   val tableUrl: RemoteFile
   val fkUrl: RemoteFile
   val indexUrl: RemoteFile
@@ -25,7 +29,7 @@ trait Settings {
 }
 
 class MusicbrainzSettings extends Settings {
-  val dbName = "musicbrainz_db"
+  val dbName = "musicbrainz"
   val dbUser = "musicbrainz"
   val dbPassword = "musicbrainz"
   val dbSchema = "musicbrainz"
@@ -33,17 +37,27 @@ class MusicbrainzSettings extends Settings {
   val remoteBaseUrl: String =
     "https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/admin/sql"
 
-  val tableUrl: RemoteFile = RemoteFile("CreateTables.sql", "jRn5/BywQaV3cTYIYT9HuQ==",
-      dropFirstLine)
-  val fkUrl: RemoteFile = RemoteFile("CreateFKConstraints.sql", "8jzVysqOMt2beKYIpLSsYQ==",
+  override val searchConfigUrl: Option[RemoteFile] =
+    Some(RemoteFile("CreateSearchConfiguration.sql", "ZGF/owrW3iQxsIpkZkfdsw==", dropFirstLine))
+  override val extensionsUrl: Option[RemoteFile] =
+    Some(RemoteFile("Extensions.sql", "rOawIv9JDFZ4LkpPPuU1aA==", dropFirstLine))
+  override val collationsUrl: Option[RemoteFile] =
+    Some(RemoteFile("CreateCollations.sql", "RTo18SRSLu6VcRZYILxEOw==", dropFirstLine))
+  val typesUrl: Option[RemoteFile] =
+    Some(RemoteFile("CreateTypes.sql", "c3SVOoohuG+N9/1iUT2bnQ==", dropFirstLine))
+  val tableUrl: RemoteFile =
+    RemoteFile("CreateTables.sql", "l3EbpPB81TQZ9GnQbcwmHg==", dropFirstLine)
+  val fkUrl: RemoteFile = RemoteFile("CreateFKConstraints.sql", "P6pSpGXPV+jK7nFe1s8iiA==",
       dropFirstTwoLines, ignoreForeignKey("editor"), ignoreForeignKey("owner"))
-  val indexUrl: RemoteFile = RemoteFile("CreateIndexes.sql", "vSHASWxaBqaQBSOB9vyyGA==",
+  val indexUrl: RemoteFile = RemoteFile("CreateIndexes.sql", "bVOUamO0+4UP37nOoxfgVg==",
       dropFirstLine)
-  val pkUrl: RemoteFile = RemoteFile("CreatePrimaryKeys.sql", "pkG2t4TJYbKJPY95UDlcjg==",
+  val pkUrl: RemoteFile = RemoteFile("CreatePrimaryKeys.sql", "8RG5YwM4mzufBMgG9Kdezg==",
       dropFirstTwoLines)
-  val funcUrl: RemoteFile = RemoteFile("CreateFunctions.sql", "7bwhQ4nkPaTE1Asgs1G92g==",
+  val funcUrl: RemoteFile = RemoteFile("CreateFunctions.sql", "QP03jOaf5NcU+LWHLH5SQw==",
       dropFirstLine)
-  val remoteSqlFiles: Seq[RemoteFile] = List(tableUrl, fkUrl, indexUrl, pkUrl, funcUrl)
+  val remoteSqlFiles: Seq[RemoteFile] = 
+    List(extensionsUrl.get, searchConfigUrl.get, collationsUrl.get, typesUrl.get,
+      tableUrl, fkUrl, indexUrl, pkUrl, funcUrl)
 
   val sqlLocation = "resources/sql"
   val dumpNames = List("mbdump.tar.bz2", "mbdump-derived.tar.bz2")
@@ -55,6 +69,8 @@ object CoverArtArchiveSettings extends Settings {
   val dbSchema = "cover_art_archive"
 
   val remoteBaseUrl: String = MusicbrainzSettings.remoteBaseUrl + "/caa"
+
+  val typesUrl: Option[RemoteFile] = None
 
   val tableUrl: RemoteFile = RemoteFile("CreateTables.sql", "7XJKwltxczlvnuvTLlB1Cg==",
     dropFirstLine)

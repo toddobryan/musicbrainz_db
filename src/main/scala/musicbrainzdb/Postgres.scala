@@ -2,8 +2,7 @@ package musicbrainzdb
 
 import java.io.{BufferedInputStream, InputStream}
 import java.nio.file.{Files, Paths}
-import java.sql.DriverManager
-
+import java.sql.{Driver, DriverManager}
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import org.jooq.impl.DSL
@@ -11,23 +10,50 @@ import org.jooq.{DSLContext, SQLDialect}
 import org.postgresql.copy.CopyManager
 import org.postgresql.core.BaseConnection
 
+import java.util.ServiceLoader
 import scala.io.Source
 
 object Postgres {
 
   lazy val conn: BaseConnection = DriverManager.getConnection(
-    "jdbc:postgresql://localhost/musicbrainz_db", "musicbrainz", "musicbrainz").
-      asInstanceOf[BaseConnection]
+    "jdbc:postgresql://localhost/musicbrainz",
+    "musicbrainz",
+    "musicbrainz",
+  ).asInstanceOf[BaseConnection]
 
   implicit lazy val ctx: DSLContext = DSL.using(conn, SQLDialect.POSTGRES)
 
   def dropSchema(settings: Settings): Unit = {
     ctx.execute(s"DROP SCHEMA IF EXISTS ${settings.dbSchema} CASCADE")
-  }
-
-  def createTables(settings: Settings): Unit = {
     ctx.execute(s"CREATE SCHEMA ${settings.dbSchema}")
     ctx.execute(s"SET search_path TO ${settings.dbSchema}, public")
+  }
+  
+  def createSearchConfig(settings: Settings): Unit = settings.searchConfigUrl.foreach { sc =>
+    runSqlFromFile(settings, sc.name)
+  }
+
+  def createExtensions(settings: Settings): Unit = settings.extensionsUrl.foreach { eu =>
+    runSqlFromFile(settings, eu.name)
+  }
+
+  def createCollations(settings: Settings): Unit = settings.collationsUrl.foreach { cu =>
+    runSqlFromFile(settings, cu.name)
+  }
+
+  def createTypes(settings: Settings): Unit =
+    List(
+      "cover_art_presence", "edit_note_status", "event_art_presence",
+      "fluency", "oauth_code_challenge_method",
+      "ratable_entity_type", "taggable_entity_type"
+    ).foreach { tpe =>
+      ctx.execute(s"DROP TYPE IF EXISTS $tpe CASCADE")
+    }
+    settings.typesUrl.foreach { tu =>
+      runSqlFromFile(settings, tu.name)
+    }
+
+  def createTables(settings: Settings): Unit = {
     runSqlFromFile(settings, settings.tableUrl.name)
   }
 
@@ -38,7 +64,7 @@ object Postgres {
           Files.newInputStream(
             Paths.get(settings.dbDumpDir, Downloader.latest, dumpName))))
       val archive = new TarArchiveInputStream(in)
-      var currentEntry = archive.getNextTarEntry
+      var currentEntry = archive.getNextEntry
       while (currentEntry != null) {
         if (currentEntry.getName.startsWith(s"${Downloader.RemoteDumpDir}/")) {
           val name = currentEntry.getName.substring(s"${Downloader.RemoteDumpDir}/".length)
@@ -47,7 +73,7 @@ object Postgres {
         } else {
           println(s"Skipping ${currentEntry.getName}.")
         }
-        currentEntry = archive.getNextTarEntry
+        currentEntry = archive.getNextEntry
       }
       println("Done.")
       archive.close()
@@ -79,3 +105,15 @@ object Postgres {
     println(s"Updated $numRows rows.")
   }
 }
+/*
+@main
+def main(): Unit =
+  val loadedDrivers: ServiceLoader[Driver] = ServiceLoader.load(classOf[Driver])
+  loadedDrivers.forEach(println(_))
+  val conn: BaseConnection = DriverManager.getConnection(
+    "jdbc:postgresql://localhost/musicbrainz",
+    "musicbrainz",
+    "musicbrainz",
+  ).asInstanceOf[BaseConnection]
+  println(conn)
+*/
